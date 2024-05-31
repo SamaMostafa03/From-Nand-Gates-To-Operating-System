@@ -1,3 +1,0 @@
-﻿  Jack Syntax Analyzer.cpp
-D:\Projects\Jack Syntax Analyzer\Jack Syntax Analyzer.cpp(70,1): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
-  Jack Syntax Analyzer.vcxproj -> D:\Projects\Jack Syntax Analyzer\x64\Debug\Jack Syntax Analyzer.exe

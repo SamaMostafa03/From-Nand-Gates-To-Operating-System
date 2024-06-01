@@ -5,7 +5,7 @@
 This project's goal is to build a full computer from scratch by using only a `Nand` gate abstraction to go from implementing the CPU , RAM all the way till the Assembler , Compiler and finally a basic Operating System.
 
 ## Computer Layers
-![Computer Layers](https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Computer.jpg?raw=true)
+![Computer Layers](https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/Computer%20Layers.jpg?raw=true)
 
 This project was done in 9 subprojects, each in their respective folder. Since this project is focused on Computer Science, the computer was built on my own PC, using a software-based hardware simulator without any need for physical materials.
 
@@ -41,7 +41,7 @@ Creating arithmetic gates to implement the computer's Arithmetic Logic Unit (ALU
 - `Inc16.hdl` - Adds 1 to 16-bit integers.
 - `ALU.hdl` - Arithmetic Logic Unit, used to compute various operations, according to the following table:
 
-![ALU](https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/ALU.png?raw=true)
+![ALU](https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/ALU.png?raw=true)
 
 ## 3 - Memory Chips
 
@@ -75,10 +75,14 @@ Creating CPU and RAM of the Hack computer and applying the `Harvard Architecture
 - `CPU.hdl` - The Hack CPU.
 - `Computer.hdl` - The Hack computer platform.
 
-![Computer Architecture](https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Computer%20Arch.png?raw=true)
+`Harvard Architecture` :
 
-Additionally, the followig programs were used to test the Hack computer:
+![Computer Architecture](https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/Computer%20Arch.png?raw=true)
 
-- `Add.hack` - Adds up the two constants 2 and 3 and writes the result in `RAM[0]`.
-- `Max.hack` - Computes the maximum of `RAM[0]` and `RAM[1]` and writes the result in `RAM[2]`.
-- `Rect.hack` - Draws a rectangle of width 16 pixels and length `RAM[0]` at the top left of the screen.
+`Memory Design` :
+
+![Memory](https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/Memory.png?raw=true)
+
+`CPU Design` :
+
+![CPU](https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/CPU.png?raw=true)

@@ -86,3 +86,35 @@ Creating CPU and RAM of the Hack computer and applying the `Harvard Architecture
 `CPU Design` :
 
 ![CPU](https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/CPU.png?raw=true)
+
+
+## 6 - Hack Assembler
+
+Building a Hack Assembler to translate `.asm` files into `.hack` files.
+
+All `.hack` instructions are a single 16-bit integer that can be translated either to A-instructions that is used for addressing or C-intructions used for calculation.
+
+![Instructions](https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/Hack%20Instructions.png?raw=true)
+
+## 7 - Virtual Machine Translator
+
+Since the compiler i built for this computer is a 2-tier architecture, a virtual machine layer was needed to translate the intermediate code into executable code. This stack-based virtual machine will serve as the backend module of the two-tier compiler.
+
+Creating a `C++` file of VM translator to be operated in a CLI like:
+
+`g++ VMTranslator.cpp -o VMTranslator && ./VMTranslator StackTest\StackTest.vm`.
+
+The vm code in `.vm` files are translated into hack assembly in `.asm` files and placed in the same directory.
+
+The VM translator is able to:
+
+- Handle a total of 9 arithmetic and logic operations(`add`-`sub`-`neg`-`eq`-`or`-`gt`-`lt`-`and`-`not`).
+- Translate `push` and `pop` commands to the VM Stack and to 8 distinct memory segments(`local`-`argument`-`this`-`that`-`temp`-`static`-`pointer`-`constant`).
+- Translate complex branching scenario using `goto` and `if-goto` commands.
+- Translate more complex functions and recursion scenarios using `function` , `return` and function calling using `call` command.
+- Handle multi-file directory translation: `g++ VMTranslator.cpp NestedCall`, all `.vm` files in the directory will be translated into one `.asm` file.
+- Translate bootstrap code in case there is a `Sys.vm` file in the directory (Resets Stack top and calls `Sys.init`).
+
+The mapping for the VM translator is:
+
+![mapping](https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/mapping.png?raw=true)

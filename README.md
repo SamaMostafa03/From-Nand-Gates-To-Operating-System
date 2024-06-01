@@ -98,7 +98,7 @@ All `.hack` instructions are a single 16-bit integer that can be translated eith
 
 ## 7 - Virtual Machine Translator
 
-Since the compiler i built for this computer is a 2-tier architecture, a virtual machine layer was needed to translate the intermediate code into executable code. This stack-based virtual machine will serve as the backend module of the two-tier compiler.
+Since the compiler i built for this computer is a 2-tier architecture, a virtual machine layer was needed to translate the intermediate code into executable code. This stack-based virtual machine will serve as the backend module of the 2-tier compiler.
 
 Creating a `C++` file of VM translator to be operated in a CLI like:
 

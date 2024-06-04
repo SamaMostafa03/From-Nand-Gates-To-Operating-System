@@ -118,3 +118,8 @@ The VM translator is able to:
 The mapping for the VM translator is:
 
 ![mapping](https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/mapping.png?raw=true)
+
+## 8 - Jack Analyzer And Compiler :hourglass_flowing_sand:
+
+## 9 - Jack Operating System :hourglass_flowing_sand:
+

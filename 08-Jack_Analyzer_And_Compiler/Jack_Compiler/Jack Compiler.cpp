@@ -114,7 +114,8 @@ public:
 class SymbolTable
 {
 private:
-    string type, kind; 
+    string type, kind, tableType;
+    int fieldCount, staticCount, argCount, lclCount;
     map<string, vector<string>> symbolTable;
 public:
     void setType(string type)
@@ -127,17 +128,13 @@ public:
     }
     void addRow(string name)
     {
-        vector<string>v = { this->type,this->kind, to_string(getVarCount(kind))};
+        int index;
+        if (this->kind == "field") { this->fieldCount++; index = fieldCount; }
+        if (this->kind == "static") { this->staticCount++; index = staticCount; }
+        if (this->kind == "arg") { this->argCount++; index = argCount; }
+        else { this->lclCount++; index = lclCount; }
+        vector<string>v = { this->type,this->kind,to_string(index))};
         this->symbolTable[name] = v;
-    }
-    int getVarCount(string var)
-    {
-        int counter = 0;
-        for (auto it : this->symbolTable)
-        {
-            if (it.second[1] == var)counter++;
-        }
-        return counter;
     }
     string getType(string name)
     {
@@ -150,6 +147,13 @@ public:
     void clearTabel()
     {
         this->symbolTable.clear();
+        if (this->tableType == "class") { this->fieldCount = 0; this->staticCount = 0; }
+        else { this->argCount = 0; this->lclCount = 0; }
+    }
+public:
+    SymbolTable(string tableType)
+    {
+        this->tableType = tableType;
     }
 };
 class VMWriter {
@@ -302,7 +306,7 @@ private:
     }
     void process(string token, string tokenType)
     {
-        if (words[0] != tokenType || (words[1] != token && (tokenType == "keyword" || tokenType == "symbol"))) { cout << "wroooong process" << endl; return; }
+        if (words[0] != tokenType || (words[1] != token && (tokenType == "keyword" || tokenType == "symbol"))) { cout << "syntax error" << endl; return; }
         getNextLine();
     }
     void compileClass()
@@ -328,6 +332,7 @@ private:
     {
         if (words[1] == "int" || words[1] == "char" || words[1] == "boolean" || 
             words[0] == "<identifier>" || (words[1] == "void" && functionType))getNextLine();
+        else { cout << "syntax error" << endl; return; }
     }
     void checkMoreVars()
     {
@@ -338,7 +343,10 @@ private:
     void processVarDec()
     {
         process("var", "<keyword>");
+        this->classTable.setKind("local");
+        this->classTable.setType(words[1]);
         processType();
+        this->classTable.addRow(words[1]);
         checkMoreVars();
     }
     void compileSubroutineDec()
@@ -353,32 +361,25 @@ private:
     }
     void processParameterList()
     {
-        printXML("<parameterList>");
-        tabs++;
         while (words[1] != ")")
         {
+            this->classTable.setKind("arg");
+            this->classTable.setType(words[1]);
             processType();
+            this->classTable.addRow(words[1]);
             process("varName", "<identifier>");
             if (words[1] == ",") { process(",", "<symbol>"); }
         }
-        tabs--;
-        printXML("</parameterList>");
     }
     void processSubroutineBody()
     {
-        printXML("<subroutineBody>");
-        tabs++;
         process("{", "<symbol>");
         while (words[1] == "var") { processVarDec(); }
         processStatments();
         process("}", "<symbol>");
-        tabs--;
-        printXML("</subroutineBody>");
     }
     void processStatments()
     {
-        printXML("<statements>");
-        tabs++;
         while (words[1] != "}")
         {
             if (words[1] == "let")processLetStatment();
@@ -388,26 +389,18 @@ private:
             else if (words[1] == "return")processReturnStatment();
             else break;
         }
-        tabs--;
-        printXML("</statements>");
     }
     void processLetStatment()
     {
-        printXML("<letStatement>");
-        tabs++;
         process("let", "<keyword>");
         process("varName", "<identifier>");
         if (words[1] == "[") { process("[", "<symbol>"); processExpression("]"); process("[", "<symbol>"); }
         process("=", "<symbol>");
         processExpression(";");
         process(";", "<symbol>");
-        tabs--;
-        printXML("</letStatement>");
     }
     void processExpression(string endSymbol)
     {
-        printXML("<expression>");
-        tabs++;
         while (words[1] != endSymbol)
         {
             processTerm();
@@ -418,13 +411,9 @@ private:
             }
             if (!check)break;
         }
-        tabs--;
-        printXML("</expression>");
     }
     void processTerm()
     {
-        printXML("<term>");
-        tabs++;
         printXML(this->currentLine);
         if (words[1] == "(") { getNextLine(); processExpression(")"); process(")", "<symbol>"); }
         else
@@ -438,8 +427,6 @@ private:
             else if (words[1] == "~" || words[1] == "-") { getNextLine(); processTerm(); }
             else getNextLine();
         }
-        tabs--;
-        printXML("</term>");
     }
     void processSubroutineCall()
     {
@@ -457,16 +444,10 @@ private:
     }
     void processExpressionList()
     {
-        printXML("<expressionList>");
-        tabs++;
         while (words[1] != ")") { processExpression(","); if (words[1] == ",") process(",", "<symbol>"); }
-        tabs--;
-        printXML("</expressionList>");
     }
     void processIfStatment()
     {
-        printXML("<ifStatement>");
-        tabs++;
         process("if", "<keyword>");
         process("(", "<symbol>");
         processExpression(")");
@@ -475,8 +456,6 @@ private:
         processStatments();
         process("}", "<symbol>");
         checkElseStatment();
-        tabs--;
-        printXML("</ifStatement>");
     }
     void checkElseStatment()
     {
@@ -490,19 +469,13 @@ private:
     }
     void processDoStatment()
     {
-        printXML("<doStatement>");
-        tabs++;
         process("do", "<keyword>");
         process("subroutineName", "<identifier>");
         processSubroutineCall();
         process(";", "<symbol>");
-        tabs--;
-        printXML("</doStatement>");
     }
     void processWhileStatment()
     {
-        printXML("<whileStatement>");
-        tabs++;
         process("while", "<keyword>");
         process("(", "<symbol>");
         processExpression(")");
@@ -510,22 +483,18 @@ private:
         process("{", "<symbol>");
         processStatments();
         process("}", "<symbol>");
-        tabs--;
-        printXML("</whileStatement>");
     }
     void processReturnStatment()
     {
-        printXML("<returnStatement>");
-        tabs++;
         process("return", "<keyword>");
         if (words[1] != ";")processExpression(";");
         process(";", "<symbol>");
-        tabs--;
-        printXML("</returnStatement>");
     }
 public:
     CompileEngine(string currentPath, string currentFile)
     {
+        this->classTable = new SymbolTable("class");
+        this->subroutineTable = new SymbolTable("subroutine");
         this->cin.open(currentPath + "\\" + currentFile + "Tokins.txt");
         this->cout.open(currentPath + "\\" + currentFile + ".vm");
         getNextLine();

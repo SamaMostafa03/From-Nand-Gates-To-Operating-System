@@ -144,11 +144,23 @@ public:
     {
         return this->symbolTable[name][1];
     }
+    int getIndex(string name)
+    {
+        return this->symbolTable[name][2];
+    }
     void clearTabel()
     {
         this->symbolTable.clear();
         if (this->tableType == "class") { this->fieldCount = 0; this->staticCount = 0; }
         else { this->argCount = 0; this->lclCount = 0; }
+    }
+    bool checkIdentifier(string name)
+    {
+        for (auto it : symbolTable)
+        {
+            if (it.first == name)return true;
+        }
+        return false;
     }
 public:
     SymbolTable(string tableType)
@@ -159,119 +171,64 @@ public:
 class VMWriter {
 private:
     int labelID = 0, callID = 0; //unique id for eq,le,gt commands/call function command
-    void writeArithmitic(string symbol)
+    void writeArithmitic(char symbol)
     {
-        transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper);
-        if (symbol == "NOT" || symbol == "NEG")
-        {
-            cout << " @SP \n M=M-1 \n A=M \n";
-            if (symbol == "NOT")cout << " M=!M \n";
-            else cout << " M=-M \n";
-            cout << " @SP \n M=M+1 \n";
+        switch (symbol) {
+        case '+':
+            cout << "add";
+            break;
+        case '-':
+            cout << "sub";
+            break;
+        case '=':
+            cout << "eq";
+            break;
+        case '>':
+            cout << "gt";
+            break;        
+        case '<':
+            cout << "lt";
+            break; 
+        case '~':
+            cout << "not";
+            break; 
+        case '&':
+            cout << "and";
+            break; 
+        case '|':
+            cout << "or";
+            break; 
+        case '*':
+            this->writeCall("Math.multiply", 2);
+            break;
+        case '/':
+            this->writeCall("Math.divide", 2);
+            break;         
+        default:
+            cout << "neg";
         }
-        else if (symbol == "ADD" || symbol == "SUB" || symbol == "AND" || symbol == "OR")
-        {
-            cout << " @SP \n M=M-1 \n A=M \n D=M \n @SP \n M=M-1 \n A=M \n";
-            if (symbol == "ADD")cout << " M=M+D \n";
-            else if (symbol == "SUB")cout << " M=M-D \n";
-            else if (symbol == "AND")cout << " M=M&D \n";
-            else cout << " M=M|D \n";
-            cout << " @SP \n M=M+1 \n";
-        }
-        else //eq , it, gt
-        {
-            cout << " @SP \n M=M-1 \n A=M \n D=M \n @SP \n M=M-1 \n A=M \n D=M-D \n @TRUE-" << labelID << "\n";
-            if (symbol == "EQ")cout << " D;JEQ \n";
-            else if (symbol == "GT")cout << " D;JGT \n";
-            else cout << " D;JLT \n";
-            cout << " @SP \n A=M \n M=0 \n @INCR-SP" << labelID << "\n 0;JMP \n(TRUE-" << labelID << ")\n @SP \n A=M \n M=-1 \n(INCR-SP" << labelID << ")\n @SP \n M=M+1 \n";
-            this->labelID++;
-        }
+        cout << endl;
     }
     void writePushPop(string commandType, string segment, int segIndex)
     {
-        transform(segment.begin(), segment.end(), segment.begin(), ::toupper);
-        if (segment == "CONSTANT") //push constant i : RAM[SP]=i; SP++;
-        {
-            cout << " @" << segIndex << "\n D=A \n @SP \n A=M \n M=D \n @SP \n M=M+1 \n";
-        }
-        else if (segment == "TEMP" || segment == "POINTER" || segment == "STATIC")
-        {
-            string newIndex;
-            if (segment == "TEMP")newIndex = to_string(segIndex + 5);
-            else if (segment == "POINTER")newIndex = to_string(segIndex + 3);
-            else newIndex = this->parser.getCurrentFile() + "." + to_string(segIndex + 16);
-            if (commandType == "PUSH")//RAM[SP]=RAM[DESIRED LOCATION]; SP++;
-            {
-                cout << " @" << newIndex << "\n D=M \n @SP \n A=M \n M=D \n @SP \n M=M+1 \n";
-            }
-            else //POP : SP--; RAM[DESIRED LOCATION]=RAM[SP];
-            {
-                cout << " @SP \n M=M-1 \n A=M \n D=M \n @" << newIndex << "\n M=D \n";
-            }
-        }
-        else //LCL,ARG,THIS,THAT
-        {
-            if (segment == "LOCAL")segment = "LCL";
-            else if (segment == "ARGUMENT")segment = "ARG";
-            cout << " @" << segIndex << "\n D=A \n @" << segment << "\n";
-            if (commandType == "PUSH") //RAM[SP]=RAM[DESIRED LOCATION]; SP++;
-            {
-                cout << " A=M+D \n D=M \n @SP \n A=M \n M=D \n @SP \n M=M+1 \n";
-            }
-            else //POP : RAM[13]=DESIRED LOCATION; SP--; RAM[RAM[13]]=RAM[SP];
-            {
-                cout << " D=M+D \n @R13 \n M=D \n @SP \n M=M-1 \n A=M \n D=M \n @R13 \n A=M \n M=D \n";
-            }
-        }
+        cout << commandType << segment << " " << segIndex << endl;
     }
     void writeBranching(string commandType, string label)
     {
-        if (commandType == "LABEL")cout << "(" << label << ")\n";
-        else if (commandType == "GOTO")cout << " @" << label << "\n 0;JMP\n";
-        else cout << " @SP\n M=M-1\n A=M\n D=M\n @" << label << "\n D;JNE\n"; //command if-goto
+        if (commandType != "label")cout << "\t";
+        cout << commandType << " " << label<< endl;
     }
     void writeFunction(string fName, int nVars)
     {
-        cout << "(" << fName << ")\n";
-        if (nVars != 0)
-        {
-            cout << " @SP\n A=M\n";
-            for (int i = 0; i < nVars; i++)
-            {
-                cout << " M=0\n A=A+1\n";
-            }
-            cout << " D=A\n @SP\n M=D\n";
-        }
+        cout << "function " << fname << " " << nVars<< endl;
     }
     void writeCall(string fName, int nArg)
     {
-        cout << " //Push return address\n @" << fName << "$Ret" << this->callID << "\n D=A\n @SP\n A=M\n M=D\n @SP\n M=M+1\n";
-        cout << " //Push LCL of the caller\n @LCL\n D=M\n @SP\n A=M\n M=D\n @SP\n M=M+1\n";
-        cout << " //Push ARG of the caller\n @ARG\n D=M\n @SP\n A=M\n M=D\n @SP\n M=M+1\n";
-        cout << " //Push THIS of the caller\n @THIS\n D=M\n @SP\n A=M\n M=D\n @SP\n M=M+1\n";
-        cout << " //Push THAT of the caller\n @THAT\n D=M\n @SP\n A=M\n M=D\n @SP\n M=M+1\n";
-        cout << " //Reposition ARG of callee\n @SP\n D=M\n @5\n D=D-A\n @" << nArg << "\n D=D-A\n @ARG\n M=D\n";
-        cout << " //Reposition LCL of callee\n @SP\n D=M\n @LCL\n M=D\n";
-        cout << " //jump to callee\n @" << fName << "\n 0;JMP\n";
-        cout << "(" << fName << "$Ret" << this->callID << ")\n";
-        this->callID++;
+        cout << "\tcall " << fname << " " << nArg << endl;
     }
     void writeReturn()
     {
-        cout << " //Reposition return address\n @LCL\n D=M\n @5\n A=D-A\n D=M\n @R15\n M=D\n";
-        cout << " //Give the return value to the caller\n @SP\n M=M-1\n A=M\n D=M\n @ARG\n A=M\n M=D\n";
-        cout << " //Reposition SP to recycle the memory\n @ARG\n D=M\n @SP\n M=D+1\n";
-        cout << " //Reposition THAT\n @LCL\n D=M\n @1\n A=D-A\n D=M\n @THAT\n M=D\n";
-        cout << " //Reposition THIS\n @LCL\n D=M\n @2\n A=D-A\n D=M\n @THIS\n M=D\n";
-        cout << " //Reposition ARG\n @LCL\n D=M\n @3\n A=D-A\n D=M\n @ARG\n M=D\n";
-        cout << " //Reposition LCL\n @LCL\n D=M\n @4\n A=D-A\n D=M\n @LCL\n M=D\n";
-        cout << " //return to caller\n @R15\n A=M\n 0;JMP\n";
-    }
-    void writeBootStrap()
-    {
-        cout << "//BootStrap code : SP=256 , call sys.init\n @256\n D=A\n @0\n M=D\n";
-        this->writeCall("Sys.init", 0);
+        cout << "\treturn";
     }
 public:
     void setWriteOperation(string commandType, string symbol, int index)
@@ -279,7 +236,7 @@ public:
         //write comment to define the VM command in asm file
         cout << "//" << commandType << endl;
         //generate asm code of the VM command
-        if (commandType == "ARITHMETIC")this->writeArithmitic(symbol);
+        if (commandType == "ARITHMETIC")this->writeArithmitic(symbol[0]);
         else if (commandType == "PUSH" || commandType == "POP")this->writePushPop(commandType, symbol, index);
         else if (commandType == "LABEL" || commandType == "GOTO" || commandType == "IF-GOTO")this->writeBranching(commandType, symbol);
         else if (commandType == "FUNCTION")this->writeFunction(symbol, index);
@@ -293,7 +250,7 @@ private:
     ofstream cout;
     ifstream cin;
     VMWriter codeWriter;
-    string currentLine, word, className;
+    string currentLine, word, className, identifier, index, kind;
     vector<string>words, op = { "+","-","*","/","&amp;","|","&gt;","&lt;","=" };
     SymbolTable classTable,subroutineTable;
     int tabs = 0;
@@ -351,18 +308,26 @@ private:
     }
     void compileSubroutineDec()
     {
+        if (words[1] == "method")
+        {
+            //add row
+        }
         getNextLine();
         processType(true);
+        string fname = words[1];
         process("subroutineName", "<identifier>");
         process("(", "<symbol>");
-        processParameterList();
+        int nArg = processParameterList();
         process(")", "<symbol>");
+        codeWriter.setWriteOperation("function", fname, index);
         processSubroutineBody();
     }
-    void processParameterList()
+    int processParameterList()
     {
+        int counter = 0;
         while (words[1] != ")")
         {
+            counter++;
             this->classTable.setKind("arg");
             this->classTable.setType(words[1]);
             processType();
@@ -370,6 +335,7 @@ private:
             process("varName", "<identifier>");
             if (words[1] == ",") { process(",", "<symbol>"); }
         }
+        return counter;
     }
     void processSubroutineBody()
     {
@@ -393,49 +359,131 @@ private:
     void processLetStatment()
     {
         process("let", "<keyword>");
+        identifier = words[1];
         process("varName", "<identifier>");
         if (words[1] == "[") { process("[", "<symbol>"); processExpression("]"); process("[", "<symbol>"); }
+        codeWriter.setWriteOperation("ARITHMETIC", "=", 0);
         process("=", "<symbol>");
         processExpression(";");
+        setIdentifier(identifier);
+        codeWriter.setWriteOperation("pop",kind,index)
         process(";", "<symbol>");
+    }
+    void setIdentifier(string identifier)
+    {
+        if (classTable.checkIdentifier(identifier))
+        {
+            index = classTable.getIndex(identifier);
+            kind = classTable.getKind(identifier);
+        }
+        else
+        {
+            index = subroutineTable.getIndex(identifier);
+            kind = subroutineTable.getKind(identifier);
+        }
     }
     void processExpression(string endSymbol)
     {
+        string operator;
+        bool check = false;
         while (words[1] != endSymbol)
         {
             processTerm();
-            bool check = false;
+            if (check)
+            {
+                if (operator=="&amp;")operator="&";
+                else if (operator=="&gt;")operator=">";
+                else if (operator=="&lt;")operator="<";
+                codeWriter.setWriteOperation("ARITHMETIC", operator,0);
+            }
+            check = false;
             for (auto it : op)
             {
-                if (words[1] == it) { check = true; printXML(this->currentLine); getNextLine(); break; }
+                if (words[1] == it) { check = true; operator = op; getNextLine(); break; }
             }
             if (!check)break;
         }
     }
     void processTerm()
     {
-        printXML(this->currentLine);
         if (words[1] == "(") { getNextLine(); processExpression(")"); process(")", "<symbol>"); }
         else
         {
             if (words[0] == "<identifier>")
             {
+                identifier = words[1];
                 getNextLine();
-                if (words[1] == "[") { process("[", "<symbol>"); processExpression("]");  process("]", "<symbol>"); }
-                else if (words[1] == "." || words[1] == "(") { processSubroutineCall(); }
+                if (words[1] == "[") 
+                { 
+                    process("[", "<symbol>"); 
+                    processExpression("]");  
+                    process("]", "<symbol>"); 
+                }
+                else if (words[1] == "." || words[1] == "(") 
+                { 
+                    processSubroutineCall(); 
+                    codeWriter.setWriteOperation("call", identifier, index);
+                }
+                else
+                {
+                    setIdentifier(identifier);
+                    codeWriter.setWriteOperation("push", kind, index);
+                }
             }
-            else if (words[1] == "~" || words[1] == "-") { getNextLine(); processTerm(); }
-            else getNextLine();
+            else if (words[1] == "~" || words[1] == "-") 
+            { 
+                string unaryOP = words[1]; 
+                if (unaryOP == "-")unaryOP = "_";
+                getNextLine(); 
+                processTerm(); 
+                codeWriter.setWriteOperation("ARITHMETIC", unaryOP, 0); 
+            }
+            else 
+            {
+                if (words[0] == "integerConstant")
+                {
+                    codeWriter.setWriteOperation("push", "constant", words[1]);
+                }
+                else if (words[0] == "stringConstant")
+                {
+                    identifier = words[1];
+                    codeWriter.setWriteOperation("push", "constant", identifier.size());
+                    codeWriter.setWriteOperation("call", "String.new", 1);
+                    for (int i = 0; i < identifier.size(); i++)
+                    {
+                        codeWriter.setWriteOperation("push", "constant", identifier[i]-'0');
+                        codeWriter.setWriteOperation("call", "String.appendChar", 1);
+                    }
+                }
+                else
+                {
+                    if (words[1] == "true")
+                    {
+                        codeWriter.setWriteOperation("push", "constant", 1);
+                        codeWriter.setWriteOperation("ARITHMETIC", "_", 0);
+                    }
+                    else if (words[1] == "false" || words[1]=="null")
+                    {
+                        codeWriter.setWriteOperation("push", "constant", 0);
+                    }
+                    else if(words[1] == "this")
+                    {
+                        codeWriter.setWriteOperation("push", "pointer", 0);
+                    }
+                }
+                getNextLine();
+
+            }
         }
     }
     void processSubroutineCall()
     {
-        printXML(this->currentLine);
         string curSymbol = words[1];
         getNextLine();
         if (curSymbol == "(") { processExpressionList(); process(")", "<symbol>"); }
         else if (curSymbol == ".")
         {
+            identifier += "." + words[1];
             process("subroutineName", "<identifier>");
             process("(", "<symbol>");
             processExpressionList();
@@ -444,7 +492,8 @@ private:
     }
     void processExpressionList()
     {
-        while (words[1] != ")") { processExpression(","); if (words[1] == ",") process(",", "<symbol>"); }
+        index = 0;
+        while (words[1] != ")") { index++; processExpression(","); if (words[1] == ",") process(",", "<symbol>"); }
     }
     void processIfStatment()
     {

@@ -170,6 +170,7 @@ public:
 };
 class VMWriter {
 private:
+    ofstream cout;
     int labelID = 0, callID = 0; //unique id for eq,le,gt commands/call function command
     void writeArithmitic(char symbol)
     {
@@ -231,11 +232,12 @@ private:
         cout << "\treturn";
     }
 public:
+    VMWriter(string currentPath, string currentFile)
+    {
+        this->cout.open(currentPath + "\\" + currentFile + ".vm");
+    }
     void setWriteOperation(string commandType, string symbol, int index)
     {
-        //write comment to define the VM command in asm file
-        cout << "//" << commandType << endl;
-        //generate asm code of the VM command
         if (commandType == "ARITHMETIC")this->writeArithmitic(symbol[0]);
         else if (commandType == "PUSH" || commandType == "POP")this->writePushPop(commandType, symbol, index);
         else if (commandType == "LABEL" || commandType == "GOTO" || commandType == "IF-GOTO")this->writeBranching(commandType, symbol);
@@ -247,13 +249,11 @@ public:
 class CompileEngine
 {
 private:
-    ofstream cout;
     ifstream cin;
     VMWriter codeWriter;
     string currentLine, word, className, identifier, index, kind;
     vector<string>words, op = { "+","-","*","/","&amp;","|","&gt;","&lt;","=" };
-    SymbolTable classTable,subroutineTable;
-    int tabs = 0;
+    SymbolTable classTable,subroutineTable,functionTable;
     void getNextLine()
     {
         words.clear();
@@ -283,7 +283,7 @@ private:
         this->classTable.setType(words[1]);
         processType();
         this->classTable.addRow(words[1]);
-        checkMoreVars();
+        checkMoreVars("class");
     }
     void processType(bool functionType = false)
     {
@@ -291,51 +291,83 @@ private:
             words[0] == "<identifier>" || (words[1] == "void" && functionType))getNextLine();
         else { cout << "syntax error" << endl; return; }
     }
-    void checkMoreVars()
+    void checkMoreVars(string tableType)
     {
         process("varName", "<identifier>");
-        while (words[1] == ",") { process(",", "<symbol>"); this->classTable.addRow(words[1]); process("varName", "<identifier>"); }
+        while (words[1] == ",") 
+        { 
+            process(",", "<symbol>"); 
+            if(tableType=="class")this->classTable.addRow(words[1]) : this->subroutineTable.addRow(words[1]);
+            process("varName", "<identifier>"); 
+        }
         process(";", "<symbol>");
     }
     void processVarDec()
     {
         process("var", "<keyword>");
-        this->classTable.setKind("local");
-        this->classTable.setType(words[1]);
+        this->subroutineTable.setKind("local");
+        this->subroutineTable.setType(words[1]);
         processType();
-        this->classTable.addRow(words[1]);
-        checkMoreVars();
+        this->subroutineTable.addRow(words[1]);
+        checkMoreVars("subroutine");
     }
     void compileSubroutineDec()
     {
-        if (words[1] == "method")
+        string subroutineType = words[1], returnType;
+        index = 0;
+        if (subroutineType == "method")
         {
-            //add row
+            index++;
+            this->subroutineTable.setKind("argument");
+            this->subroutineTable.setType(this->className);
+            this->subroutineTable.addRow("this");
         }
         getNextLine();
+        returnType = words[1];
         processType(true);
-        string fname = words[1];
+        string fname = this->className + "." + words[1];
+        functionTable.setKind(subroutineType);
+        functionTable.setType(returnType);
+        functionTable.addRow(fname);
         process("subroutineName", "<identifier>");
         process("(", "<symbol>");
-        int nArg = processParameterList();
+        processParameterList();
         process(")", "<symbol>");
         codeWriter.setWriteOperation("function", fname, index);
-        processSubroutineBody();
-    }
-    int processParameterList()
-    {
-        int counter = 0;
-        while (words[1] != ")")
+        if (subroutineType == "method")
         {
-            counter++;
-            this->classTable.setKind("arg");
-            this->classTable.setType(words[1]);
+            codeWriter.setWriteOperation("push", "argument", 0);
+            codeWriter.setWriteOperation("pop", "pointer", 0);
+        }     
+        if (subroutineType == "constructor")
+        {
+            codeWriter.setWriteOperation("push", "constant", index);
+            codeWriter.setWriteOperation("call", "Memory.alloc", 1);
+            codeWriter.setWriteOperation("pop", "pointer", 0);
+        }
+        processSubroutineBody();
+        if (subroutineType == "constructor")
+        {
+            codeWriter.setWriteOperation("push", "pointer", 0);
+        }
+        if (returnType == "void")
+        {
+            codeWriter.setWriteOperation("push", "constant", 0);
+        }
+        codeWriter.setWriteOperation("return", "", 0);
+    }
+    void processParameterList()
+    {
+=        while (words[1] != ")")
+        {
+            index++;
+            this->subroutineTable.setKind("argument");
+            this->subroutineTable.setType(words[1]);
             processType();
-            this->classTable.addRow(words[1]);
+            this->subroutineTable.addRow(words[1]);
             process("varName", "<identifier>");
             if (words[1] == ",") { process(",", "<symbol>"); }
         }
-        return counter;
     }
     void processSubroutineBody()
     {
@@ -358,15 +390,34 @@ private:
     }
     void processLetStatment()
     {
+        bool isArray = false;
         process("let", "<keyword>");
         identifier = words[1];
         process("varName", "<identifier>");
-        if (words[1] == "[") { process("[", "<symbol>"); processExpression("]"); process("[", "<symbol>"); }
-        codeWriter.setWriteOperation("ARITHMETIC", "=", 0);
+        if (words[1] == "[")
+        { 
+            process("[", "<symbol>");
+            isArray = true;
+            setIdentifier(identifier);
+            codeWriter.setWriteOperation("push", kind, index);
+            processExpression("]"); 
+            codeWriter.setWriteOperation("ARITHMETIC", "+", 0);
+            process("[", "<symbol>"); 
+        }
         process("=", "<symbol>");
         processExpression(";");
-        setIdentifier(identifier);
-        codeWriter.setWriteOperation("pop",kind,index)
+        if (isArray)
+        {
+            codeWriter.setWriteOperation("pop", "temp", 0);
+            codeWriter.setWriteOperation("pop", "pointer", 1);
+            codeWriter.setWriteOperation("push", "temp", 0);
+            codeWriter.setWriteOperation("pop", "that", 0);
+        }
+        else
+        {
+            setIdentifier(identifier);
+            codeWriter.setWriteOperation("pop", kind, index)
+        }
         process(";", "<symbol>");
     }
     void setIdentifier(string identifier)
@@ -415,14 +466,20 @@ private:
                 getNextLine();
                 if (words[1] == "[") 
                 { 
-                    process("[", "<symbol>"); 
-                    processExpression("]");  
+                    setIdentifier(identifier);
+                    codeWriter.setWriteOperation("push", kind, index);
+                    processExpression("]");
+                    codeWriter.setWriteOperation("ARITHMETIC", "+", 0);
                     process("]", "<symbol>"); 
                 }
                 else if (words[1] == "." || words[1] == "(") 
                 { 
                     processSubroutineCall(); 
                     codeWriter.setWriteOperation("call", identifier, index);
+                    if (functionTable.getType(identifier) == "void")
+                    {
+                        codeWriter.setWriteOperation("pop", "temp", 0);
+                    }
                 }
                 else
                 {
@@ -480,10 +537,12 @@ private:
     {
         string curSymbol = words[1];
         getNextLine();
+        index = 0;
+        identifier = this->className + "." + words[1];
         if (curSymbol == "(") { processExpressionList(); process(")", "<symbol>"); }
         else if (curSymbol == ".")
         {
-            identifier += "." + words[1];
+            index++;
             process("subroutineName", "<identifier>");
             process("(", "<symbol>");
             processExpressionList();
@@ -492,7 +551,6 @@ private:
     }
     void processExpressionList()
     {
-        index = 0;
         while (words[1] != ")") { index++; processExpression(","); if (words[1] == ",") process(",", "<symbol>"); }
     }
     void processIfStatment()
@@ -545,7 +603,7 @@ public:
         this->classTable = new SymbolTable("class");
         this->subroutineTable = new SymbolTable("subroutine");
         this->cin.open(currentPath + "\\" + currentFile + "Tokins.txt");
-        this->cout.open(currentPath + "\\" + currentFile + ".vm");
+        this->codeWriter = new VMWriter(currentPath, currentFile);
         getNextLine();
         this->compileClass();
     }

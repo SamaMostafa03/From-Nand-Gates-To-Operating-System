@@ -245,11 +245,11 @@ public:
     }
     void setWriteOperation(string commandType, string symbol, int index)
     {
-        if (commandType == "ARITHMETIC")this->writeArithmitic(symbol[0]);
-        else if (commandType == "PUSH" || commandType == "POP")this->writePushPop(commandType, symbol, index);
-        else if (commandType == "LABEL" || commandType == "GOTO" || commandType == "IF-GOTO")this->writeBranching(commandType, symbol);
-        else if (commandType == "FUNCTION")this->writeFunction(symbol, index);
-        else if (commandType == "CALL")this->writeCall(symbol, index);
+        if (commandType == "arithmitic")this->writeArithmitic(symbol[0]);
+        else if (commandType == "push" || commandType == "pop")this->writePushPop(commandType, symbol, index);
+        else if (commandType == "label" || commandType == "goto" || commandType == "if-goto")this->writeBranching(commandType, symbol);
+        else if (commandType == "function")this->writeFunction(symbol, index);
+        else if (commandType == "call")this->writeCall(symbol, index);
         else this->writeReturn();
     }
 };
@@ -257,11 +257,12 @@ class CompileEngine
 {
 private:
     ifstream cin;
-    int index;
+    int index, labelID;
     string currentLine, word, className, identifier, kind;
     vector<string>words, op = { "+","-","*","/","&amp;","|","&gt;","&lt;","=" };
     VMWriter codeWriter;
     SymbolTable classTable, subroutineTable, functionTable;
+    vector<string>os = { "Math","Memory","Sys","Screen","Output","Keyboard","String","Array"};
     void getNextLine()
     {
         words.clear();
@@ -482,7 +483,7 @@ private:
                 }
                 else if (words[1] == "." || words[1] == "(")
                 {
-                    processSubroutineCall();
+                    processSubroutineCall(identifier);
                     codeWriter.setWriteOperation("call", identifier, index);
                     if (functionTable.getType(identifier) == "void")
                     {
@@ -541,16 +542,29 @@ private:
             }
         }
     }
-    void processSubroutineCall()
+    void processSubroutineCall(string id)
     {
+        bool isOS = false;
+        for (auto it : os)
+        {
+            if (id == it) { isOS = true; break; }
+        }
         string curSymbol = words[1];
         getNextLine();
         index = 0;
-        identifier = this->className + "." + words[1];
-        if (curSymbol == "(") { processExpressionList(); process(")", "<symbol>"); }
-        else if (curSymbol == ".")
+        if (!classTable.checkIdentifier(id) && !subroutineTable.checkIdentifier(id))
+        {
+            identifier = id + ".";
+        }
+        else
         {
             index++;
+            identifier = this->className + ".";
+        }
+        if (curSymbol == "(") { identifier += id; processExpressionList(); process(")", "<symbol>"); }
+        else if (curSymbol == ".")
+        {
+            identifier += words[1];
             process("subroutineName", "<identifier>");
             process("(", "<symbol>");
             processExpressionList();
@@ -563,14 +577,21 @@ private:
     }
     void processIfStatment()
     {
+        string label1 = "label" + to_string(labelID++);
+        string label2 = "label" + to_string(labelID++);
         process("if", "<keyword>");
         process("(", "<symbol>");
         processExpression(")");
         process(")", "<symbol>");
+        codeWriter.setWriteOperation("Arithmitic", "~", 0);
+        codeWriter.setWriteOperation("if-goto", label1, 0);
         process("{", "<symbol>");
         processStatments();
+        codeWriter.setWriteOperation("goto", label2, 0);
         process("}", "<symbol>");
+        codeWriter.setWriteOperation("label", label1, 0);
         checkElseStatment();
+        codeWriter.setWriteOperation("label", label2, 0);
     }
     void checkElseStatment()
     {
@@ -585,24 +606,34 @@ private:
     void processDoStatment()
     {
         process("do", "<keyword>");
+        identifier = word[1];
         process("subroutineName", "<identifier>");
-        processSubroutineCall();
+        processSubroutineCall(identifier);
+        codeWriter.setWriteOperation("pop", "temp", 0);
         process(";", "<symbol>");
     }
     void processWhileStatment()
     {
+        string label1 = "label" + to_string(labelID++);
+        string label2 = "label" + to_string(labelID++);
         process("while", "<keyword>");
+        codeWriter.setWriteOperation("label", label1, 0);
         process("(", "<symbol>");
         processExpression(")");
         process(")", "<symbol>");
+        codeWriter.setWriteOperation("Arithmitic", "~", 0);
+        codeWriter.setWriteOperation("if-goto", label2, 0);
         process("{", "<symbol>");
         processStatments();
+        codeWriter.setWriteOperation("goto", label1, 0);
         process("}", "<symbol>");
+        codeWriter.setWriteOperation("label", label2, 0);
     }
     void processReturnStatment()
     {
         process("return", "<keyword>");
         if (words[1] != ";")processExpression(";");
+        codeWriter.setWriteOperation("return", "", 0);
         process(";", "<symbol>");
     }
 public:

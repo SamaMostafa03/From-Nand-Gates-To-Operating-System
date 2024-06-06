@@ -1,0 +1,3 @@
+﻿  Syntax Analyzer.cpp
+D:\Projects\GitHub Repos\From-Nand-Gates-To-Operating-System\08-Jack_Analyzer_And_Compiler\Syntax Analyzer\Syntax Analyzer.cpp(72,1): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
+  Syntax Analyzer.vcxproj -> D:\Projects\GitHub Repos\From-Nand-Gates-To-Operating-System\08-Jack_Analyzer_And_Compiler\x64\Debug\Syntax Analyzer.exe

@@ -129,10 +129,14 @@ public:
     void addRow(string name)
     {
         int index;
-        if (this->kind == "field") { this->kind = "this"; this->fieldCount++; index = fieldCount; }
+        if (this->kind == "field") 
+        {   this->kind = "this"; 
+            this->fieldCount++; index = fieldCount; 
+        }
         if (this->kind == "static") { this->staticCount++; index = staticCount; }
         if (this->kind == "argument") { this->argCount++; index = argCount; }
         else { this->lclCount++; index = lclCount; }
+        index--;
         vector<string>v = { this->type,this->kind,to_string(index) };
         this->symbolTable[name] = v;
     }
@@ -342,7 +346,7 @@ private:
         index = 0;
         if (subroutineType == "method")
         {
-            //index++;
+            index++;
             this->subroutineTable.setKind("argument");
             this->subroutineTable.setType(this->className);
             this->subroutineTable.addRow("this");
@@ -381,7 +385,7 @@ private:
     {
         process("{", "<symbol>");
         while (words[1] == "var") { processVarDec(); }
-        index = this->subroutineTable.getLocalSize();
+        index = this->subroutineTable.getTableSize()+1;
         codeWriter.setWriteOperation("function", fname, index);
         if (subroutineType == "method")
         {
@@ -420,7 +424,7 @@ private:
             process("[", "<symbol>");
             isArray = true;
             setIdentifier(leftID);
-            if (index)index--;
+            //if (index)index--;
             codeWriter.setWriteOperation("push", kind, index);
             processExpression("]");
             codeWriter.setWriteOperation("arithmitic", "+", 0);
@@ -438,7 +442,7 @@ private:
         else
         {
            setIdentifier(leftID);
-           if (index)index--;
+           //if (index)index--;
            codeWriter.setWriteOperation("pop", kind, index);
         }
         process(";", "<symbol>");
@@ -481,6 +485,7 @@ private:
     void processTerm()
     {
         if (words[1] == "(") { getNextLine(); processExpression(")"); process(")", "<symbol>"); }
+
         else
         {
             if (words[0] == "<identifier>")
@@ -490,11 +495,13 @@ private:
                 if (words[1] == "[")
                 {
                     setIdentifier(identifier);
-                    if (index)index--;
+                    //if (index)index--;
                     codeWriter.setWriteOperation("push", kind, index);
                     getNextLine();
                     processExpression("]");
                     codeWriter.setWriteOperation("arithmitic", "+", 0);
+                    codeWriter.setWriteOperation("pop", "pointer", 1);
+                    codeWriter.setWriteOperation("push", "that", 0);
                     process("]", "<symbol>");
                 }
                 else if (words[1] == "." || words[1] == "(")
@@ -509,7 +516,7 @@ private:
                 else
                 {
                     setIdentifier(identifier);
-                    if (index)index--;
+                   // if (index)index--;
                     codeWriter.setWriteOperation("push", kind, index);
                 }
             }
@@ -604,7 +611,7 @@ private:
         process("(", "<symbol>");
         processExpression(")");
         process(")", "<symbol>");
-        codeWriter.setWriteOperation("Arithmitic", "~", 0);
+        codeWriter.setWriteOperation("arithmitic", "~", 0);
         codeWriter.setWriteOperation("if-goto", label1, 0);
         process("{", "<symbol>");
         processStatments();

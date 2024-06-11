@@ -1,0 +1,5 @@
+﻿  Compiler.cpp
+D:\Projects\GitHub Repos\From-Nand-Gates-To-Operating-System\08-Jack_Analyzer_And_Compiler\Compiler\Compiler.cpp(72,1): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
+D:\Projects\GitHub Repos\From-Nand-Gates-To-Operating-System\08-Jack_Analyzer_And_Compiler\Compiler\Compiler.cpp(159,1): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
+D:\Projects\GitHub Repos\From-Nand-Gates-To-Operating-System\08-Jack_Analyzer_And_Compiler\Compiler\Compiler.cpp(537,1): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+  Compiler.vcxproj -> D:\Projects\GitHub Repos\From-Nand-Gates-To-Operating-System\08-Jack_Analyzer_And_Compiler\x64\Debug\Compiler.exe

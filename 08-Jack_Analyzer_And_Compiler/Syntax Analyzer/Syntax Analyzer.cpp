@@ -386,7 +386,7 @@ int main()
 {
     vector<string>jackFiles;
     string ext = ".jack";
-    string path = "D:\\nand2tetris\\nand2tetris\\projects\\10\\Square";
+    string path = "D:\\nand2tetris\\nand2tetris\\projects\\11\\ConvertToBin";
     try { //to get all jack files in the path directory
         for (const auto& entry : filesystem::directory_iterator(path)) {
             filesystem::path systemPath = entry.path();

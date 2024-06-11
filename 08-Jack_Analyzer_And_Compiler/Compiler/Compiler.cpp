@@ -129,7 +129,7 @@ public:
     void addRow(string name)
     {
         int index;
-        if (this->kind == "field") { this->fieldCount++; index = fieldCount; }
+        if (this->kind == "field") { this->kind = "this"; this->fieldCount++; index = fieldCount; }
         if (this->kind == "static") { this->staticCount++; index = staticCount; }
         if (this->kind == "argument") { this->argCount++; index = argCount; }
         else { this->lclCount++; index = lclCount; }
@@ -154,6 +154,19 @@ public:
         if (this->tableType == "class") { this->fieldCount = 0; this->staticCount = 0; }
         else { this->argCount = 0; this->lclCount = 0; }
     }
+    int getTableSize()
+    {
+        return symbolTable.size();
+    }
+    int getLocalSize()
+    {
+        int counter = 0;
+        for (auto it : symbolTable)
+        {
+            if (it.second[1] == "local")counter++;
+        }
+        return counter;
+    }
     bool checkIdentifier(string name)
     {
         for (auto it : symbolTable)
@@ -174,33 +187,33 @@ public:
 class VMWriter {
 private:
     ofstream cout;
-    int labelID = 0, callID = 0; //unique id for eq,le,gt commands/call function command
+    int labelID = 0, callID = 0; 
     void writeArithmitic(char symbol)
     {
         switch (symbol) {
         case '+':
-            cout << "add";
+            cout << "\tadd\n";
             break;
         case '-':
-            cout << "sub";
+            cout << "\tsub\n";
             break;
         case '=':
-            cout << "eq";
+            cout << "\teq\n";
             break;
         case '>':
-            cout << "gt";
+            cout << "\tgt\n";
             break;
         case '<':
-            cout << "lt";
+            cout << "\tlt\n";
             break;
         case '~':
-            cout << "not";
+            cout << "\tnot\n";
             break;
         case '&':
-            cout << "and";
+            cout << "\tand\n";
             break;
         case '|':
-            cout << "or";
+            cout << "\tor\n";
             break;
         case '*':
             this->writeCall("Math.multiply", 2);
@@ -209,13 +222,12 @@ private:
             this->writeCall("Math.divide", 2);
             break;
         default:
-            cout << "neg";
+            cout << "\tneg\n";
         }
-        cout << endl;
     }
     void writePushPop(string commandType, string segment, int segIndex)
     {
-        cout << commandType << segment << " " << segIndex << endl;
+        cout <<"\t" << commandType << " " << segment << " " << segIndex << endl;
     }
     void writeBranching(string commandType, string label)
     {
@@ -232,7 +244,7 @@ private:
     }
     void writeReturn()
     {
-        cout << "\treturn";
+        cout << "\treturn\n";
     }
 public:
     VMWriter()
@@ -257,7 +269,7 @@ class CompileEngine
 {
 private:
     ifstream cin;
-    int index, labelID;
+    int index, labelID, indexParam;
     string currentLine, word, className, identifier, kind;
     vector<string>words, op = { "+","-","*","/","&amp;","|","&gt;","&lt;","=" };
     VMWriter codeWriter;
@@ -282,7 +294,11 @@ private:
         process("className", "<identifier>");
         process("{", "<symbol>");
         while (words[1] == "static" || words[1] == "field")this->compileClassVarDec();
-        while (words[1] == "constructor" || words[1] == "function" || words[1] == "method")this->compileSubroutineDec();
+        while (words[1] == "constructor" || words[1] == "function" || words[1] == "method")
+        {
+            this->compileSubroutineDec();
+            this->subroutineTable.clearTabel();
+        }
         process("}", "<symbol>");
     }
     void compileClassVarDec()
@@ -326,7 +342,7 @@ private:
         index = 0;
         if (subroutineType == "method")
         {
-            index++;
+            //index++;
             this->subroutineTable.setKind("argument");
             this->subroutineTable.setType(this->className);
             this->subroutineTable.addRow("this");
@@ -342,28 +358,11 @@ private:
         process("(", "<symbol>");
         processParameterList();
         process(")", "<symbol>");
-        codeWriter.setWriteOperation("function", fname, index);
-        if (subroutineType == "method")
-        {
-            codeWriter.setWriteOperation("push", "argument", 0);
-            codeWriter.setWriteOperation("pop", "pointer", 0);
-        }
-        if (subroutineType == "constructor")
-        {
-            codeWriter.setWriteOperation("push", "constant", index);
-            codeWriter.setWriteOperation("call", "Memory.alloc", 1);
-            codeWriter.setWriteOperation("pop", "pointer", 0);
-        }
-        processSubroutineBody();
+        processSubroutineBody(fname, subroutineType);
         if (subroutineType == "constructor")
         {
             codeWriter.setWriteOperation("push", "pointer", 0);
         }
-        if (returnType == "void")
-        {
-            codeWriter.setWriteOperation("push", "constant", 0);
-        }
-        codeWriter.setWriteOperation("return", "", 0);
     }
     void processParameterList()
     {
@@ -378,10 +377,23 @@ private:
             if (words[1] == ",") { process(",", "<symbol>"); }
         }
     }
-    void processSubroutineBody()
+    void processSubroutineBody(string fname,string subroutineType)
     {
         process("{", "<symbol>");
         while (words[1] == "var") { processVarDec(); }
+        index = this->subroutineTable.getLocalSize();
+        codeWriter.setWriteOperation("function", fname, index);
+        if (subroutineType == "method")
+        {
+            codeWriter.setWriteOperation("push", "argument", 0);
+            codeWriter.setWriteOperation("pop", "pointer", 0);
+        }
+        if (subroutineType == "constructor")
+        {
+            codeWriter.setWriteOperation("push", "constant", index);
+            codeWriter.setWriteOperation("call", "Memory.alloc", 1);
+            codeWriter.setWriteOperation("pop", "pointer", 0);
+        }
         processStatments();
         process("}", "<symbol>");
     }
@@ -401,16 +413,17 @@ private:
     {
         bool isArray = false;
         process("let", "<keyword>");
-        identifier = words[1];
+        string leftID = words[1];
         process("varName", "<identifier>");
         if (words[1] == "[")
         {
             process("[", "<symbol>");
             isArray = true;
-            setIdentifier(identifier);
+            setIdentifier(leftID);
+            if (index)index--;
             codeWriter.setWriteOperation("push", kind, index);
             processExpression("]");
-            codeWriter.setWriteOperation("ARITHMETIC", "+", 0);
+            codeWriter.setWriteOperation("arithmitic", "+", 0);
             process("[", "<symbol>");
         }
         process("=", "<symbol>");
@@ -424,8 +437,9 @@ private:
         }
         else
         {
-            setIdentifier(identifier);
-            codeWriter.setWriteOperation("pop", kind, index);
+           setIdentifier(leftID);
+           if (index)index--;
+           codeWriter.setWriteOperation("pop", kind, index);
         }
         process(";", "<symbol>");
     }
@@ -454,7 +468,7 @@ private:
                 if (operat =="&amp;")operat ="&";
                 else if (operat =="&gt;")operat =">";
                 else if (operat =="&lt;")operat ="<";
-                codeWriter.setWriteOperation("ARITHMETIC", operat,0);
+                codeWriter.setWriteOperation("arithmitic", operat,0);
             }
             check = false;
             for (string it : op)
@@ -476,16 +490,18 @@ private:
                 if (words[1] == "[")
                 {
                     setIdentifier(identifier);
+                    if (index)index--;
                     codeWriter.setWriteOperation("push", kind, index);
+                    getNextLine();
                     processExpression("]");
-                    codeWriter.setWriteOperation("ARITHMETIC", "+", 0);
+                    codeWriter.setWriteOperation("arithmitic", "+", 0);
                     process("]", "<symbol>");
                 }
                 else if (words[1] == "." || words[1] == "(")
                 {
                     processSubroutineCall(identifier);
-                    codeWriter.setWriteOperation("call", identifier, index);
-                    if (functionTable.getType(identifier) == "void")
+                   // codeWriter.setWriteOperation("call", identifier, index);
+                    if (functionTable.checkIdentifier(identifier)&&functionTable.getType(identifier) == "void")
                     {
                         codeWriter.setWriteOperation("pop", "temp", 0);
                     }
@@ -493,6 +509,7 @@ private:
                 else
                 {
                     setIdentifier(identifier);
+                    if (index)index--;
                     codeWriter.setWriteOperation("push", kind, index);
                 }
             }
@@ -502,23 +519,27 @@ private:
                 if (unaryOP == "-")unaryOP = "_";
                 getNextLine();
                 processTerm();
-                codeWriter.setWriteOperation("ARITHMETIC", unaryOP, 0);
+                codeWriter.setWriteOperation("arithmitic", unaryOP, 0);
             }
             else
             {
-                if (words[0] == "integerConstant")
+                if (words[0] == "<integerConstant>")
                 {
                     codeWriter.setWriteOperation("push", "constant", stoi(words[1]));
                 }
-                else if (words[0] == "stringConstant")
+                else if (words[0] == "<stringConstant>")
                 {
-                    identifier = words[1];
-                    codeWriter.setWriteOperation("push", "constant", identifier.size());
-                    codeWriter.setWriteOperation("call", "String.new", 1);
-                    for (int i = 0; i < identifier.size(); i++)
+                    string line;
+                    for (int i = 1; i < words.size()-1; i++)
                     {
-                        codeWriter.setWriteOperation("push", "constant", identifier[i] - '0');
-                        codeWriter.setWriteOperation("call", "String.appendChar", 1);
+                        line += words[i]+' ';
+                    }
+                    codeWriter.setWriteOperation("push", "constant",line.size());
+                    codeWriter.setWriteOperation("call", "String.new", 1);
+                    for (int i = 0; i < line.size() - 1; i++)
+                    {
+                        codeWriter.setWriteOperation("push", "constant", static_cast<int>(line[i]));
+                        codeWriter.setWriteOperation("call", "String.appendChar", 2);
                     }
                 }
                 else
@@ -526,7 +547,7 @@ private:
                     if (words[1] == "true")
                     {
                         codeWriter.setWriteOperation("push", "constant", 1);
-                        codeWriter.setWriteOperation("ARITHMETIC", "_", 0);
+                        codeWriter.setWriteOperation("arithmitic", "_", 0);
                     }
                     else if (words[1] == "false" || words[1] == "null")
                     {
@@ -538,42 +559,42 @@ private:
                     }
                 }
                 getNextLine();
-
             }
         }
     }
     void processSubroutineCall(string id)
     {
-        bool isOS = false;
-        for (auto it : os)
-        {
-            if (id == it) { isOS = true; break; }
-        }
-        string curSymbol = words[1];
+        string curSymbol = words[1],callee;
         getNextLine();
-        index = 0;
-        if (!classTable.checkIdentifier(id) && !subroutineTable.checkIdentifier(id))
+        indexParam = 0;
+        if (classTable.checkIdentifier(id))
         {
-            identifier = id + ".";
+            indexParam++;
+            callee = classTable.getType(id) + ".";
+        }
+        else if (subroutineTable.checkIdentifier(id))
+        {
+            indexParam++;
+            callee = subroutineTable.getType(id) + ".";
         }
         else
         {
-            index++;
-            identifier = this->className + ".";
+            callee = id + ".";
         }
-        if (curSymbol == "(") { identifier += id; processExpressionList(); process(")", "<symbol>"); }
+        if (curSymbol == "(") { callee += id; processExpressionList(); process(")", "<symbol>"); }
         else if (curSymbol == ".")
         {
-            identifier += words[1];
+            callee += words[1];
             process("subroutineName", "<identifier>");
             process("(", "<symbol>");
             processExpressionList();
             process(")", "<symbol>");
         }
+        codeWriter.setWriteOperation("call", callee, indexParam);
     }
     void processExpressionList()
     {
-        while (words[1] != ")") { index++; processExpression(","); if (words[1] == ",") process(",", "<symbol>"); }
+        while (words[1] != ")") { indexParam++; processExpression(","); if (words[1] == ",") process(",", "<symbol>"); }
     }
     void processIfStatment()
     {
@@ -606,7 +627,7 @@ private:
     void processDoStatment()
     {
         process("do", "<keyword>");
-        identifier = word[1];
+        identifier = words[1];
         process("subroutineName", "<identifier>");
         processSubroutineCall(identifier);
         codeWriter.setWriteOperation("pop", "temp", 0);
@@ -621,7 +642,7 @@ private:
         process("(", "<symbol>");
         processExpression(")");
         process(")", "<symbol>");
-        codeWriter.setWriteOperation("Arithmitic", "~", 0);
+        codeWriter.setWriteOperation("arithmitic", "~", 0);
         codeWriter.setWriteOperation("if-goto", label2, 0);
         process("{", "<symbol>");
         processStatments();
@@ -633,6 +654,7 @@ private:
     {
         process("return", "<keyword>");
         if (words[1] != ";")processExpression(";");
+        else codeWriter.setWriteOperation("push", "constant", 0);
         codeWriter.setWriteOperation("return", "", 0);
         process(";", "<symbol>");
     }
@@ -646,13 +668,14 @@ public:
         this->codeWriter = VMWriter(currentPath, currentFile);
         getNextLine();
         this->compileClass();
+
     }
 };
 int main()
 {
     vector<string>jackFiles;
     string ext = ".jack";
-    string path = "D:\\nand2tetris\\nand2tetris\\projects\\10\\Square";
+    string path = "D:\\nand2tetris\\nand2tetris\\projects\\11\\Square";
     try { //to get all jack files in the path directory
         for (const auto& entry : filesystem::directory_iterator(path)) {
             filesystem::path systemPath = entry.path();

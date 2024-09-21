@@ -115,7 +115,7 @@ class SymbolTable
 {
 private:
     string type, kind, tableType;
-    int fieldCount, staticCount, argCount, lclCount;
+    int fieldCount=0, staticCount=0, argCount=0, lclCount=0;
     map<string, vector<string>> symbolTable;
 public:
     void setType(string type)
@@ -130,7 +130,8 @@ public:
     {
         int index;
         if (this->kind == "field") 
-        {   this->kind = "this"; 
+        {   
+            this->kind = "this"; 
             this->fieldCount++; index = fieldCount; 
         }
         if (this->kind == "static") { this->staticCount++; index = staticCount; }
@@ -179,7 +180,14 @@ public:
         }
         return false;
     }
-public:
+    void getTableInfo()
+    {
+        for (auto it : symbolTable)
+        {
+            cout << it.first << " ";
+            for (auto sec : it.second)cout << sec << " ";
+        }
+    }
     SymbolTable()
     {
     }
@@ -365,7 +373,7 @@ private:
         processSubroutineBody(fname, subroutineType);
         if (subroutineType == "constructor")
         {
-            codeWriter.setWriteOperation("push", "pointer", 0);
+            //codeWriter.setWriteOperation("push", "pointer", 0);
         }
     }
     void processParameterList()
@@ -484,7 +492,13 @@ private:
     }
     void processTerm()
     {
-        if (words[1] == "(") { getNextLine(); processExpression(")"); process(")", "<symbol>"); }
+        if (words[1] == "(") 
+        { 
+            getNextLine(); //processExpression(")"); 
+            indexParam = 0;
+            processExpressionList();
+            process(")", "<symbol>"); 
+        }
 
         else
         {
@@ -588,7 +602,12 @@ private:
         {
             callee = id + ".";
         }
-        if (curSymbol == "(") { callee += id; processExpressionList(); process(")", "<symbol>"); }
+        if (curSymbol == "(") 
+        { 
+            callee = this->className+"."+id; indexParam++; 
+            processExpressionList(); process(")", "<symbol>"); 
+            codeWriter.setWriteOperation("push", "pointer", 0);
+        }
         else if (curSymbol == ".")
         {
             callee += words[1];
@@ -682,7 +701,7 @@ int main()
 {
     vector<string>jackFiles;
     string ext = ".jack";
-    string path = "D:\\nand2tetris\\nand2tetris\\projects\\11\\Square";
+    string path = "D:\\nand2tetris\\nand2tetris\\projects\\11\\Pong";
     try { //to get all jack files in the path directory
         for (const auto& entry : filesystem::directory_iterator(path)) {
             filesystem::path systemPath = entry.path();

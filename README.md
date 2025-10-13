@@ -90,7 +90,7 @@ Creating CPU and RAM of the Hack computer and applying the `Harvard Architecture
 
 ## 6 - Hack Assembler
 
-Building a Hack Assembler to translate `.asm` files into `.hack` files.
+Building a Hack Assembler in `C++` that translates `.asm` files into `.hack` binary files. It initializes predefined symbols and computation tables, then performs two passes: the first pass records label addresses, and the second pass assigns variables and generates the final 16-bit binary instructions.
 
 All `.hack` instructions are a single 16-bit integer that can be translated either to A-instructions that is used for addressing or C-intructions used for calculation.
 

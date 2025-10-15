@@ -119,7 +119,39 @@ The mapping for the VM translator is:
 
 ![mapping](https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/mapping.png?raw=true)
 
-## 8 - Jack Analyzer And Compiler :hourglass_flowing_sand:
+## 8 - Jack Analyzer And Compiler
+
+For completing the front-end of the two-tier compiler architecture, a jack compiler was built to parse, analyze, and compile the `jack high-level programs` into `intermediate VM code`, which is then translated into Hack assembly by the previously built VM Translator.
+
+The Jack Compiler consists of two main components:
+### 1. Jack Analyzer
+
+- The Jack Analyzer translates Jack code into a `XML` parse tree.
+- It performs tokenization, identifying keywords, symbols, identifiers, integer constants, and string constants, and then constructs an xml parse tree that reflects the grammatical structure of the program.
+
+**Here are grammar rules for the Jack language:**
+
+  |<img src="https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/grammer1.png?raw=trueue"/>|<img src="https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/grammer2.png?raw=true"/>|
+  |-|-|
+
+  |<img src="https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/grammer3.png?raw=true"/>|<img src="https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/grammer4.png?raw=true"/>|
+  |-|-|
+
+### 2. Jack Compiler (Code Generation)
+
+- The Jack Compiler extends the analyzer to directly generate VM code that can be executed by the virtual machine.
+- It was implemented by modifying the `JackAnalyzer.cpp` program, enabling .jack files to compile directly into .vm code.
+
+Key challenges addressed in this project included:
+
+- Handling the construction and manipulation of arrays and objects
+- Implementing code generation techniques for expressions and statements
+- Designing a recursive compilation engine for nested structures
+- Managing symbol tables for class-level and subroutine-level variables
+- Implementing memory management for variable allocation and deallocation
+
+**Here’s the architecture of the full compiler pipeline:**
+
+![compiler](https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/compiler%20arch.png?raw=true)
 
 ## 9 - Jack Operating System :hourglass_flowing_sand:
-

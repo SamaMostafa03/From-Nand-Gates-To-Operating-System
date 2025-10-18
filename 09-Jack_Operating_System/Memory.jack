@@ -4,26 +4,93 @@
  * consists of 32,768 words, each holding a 16-bit binary number.
  */ 
 class Memory {
-
-    /** Initializes the class. */
+    static Array ram;
+    static Array heap;
+    static int firstFreeBlock;
+    static int lastFreeBlock;
+    
+    /** Initializes the memory system. */
     function void init() {
+        let ram = 0;              // RAM base (direct addressing)
+        let heap = 2048;          // Heap starts at address 2048
+        
+        // Initialize one big free block in the heap
+        let firstFreeBlock = 0;   // Start of the free list
+        let lastFreeBlock = 0;
+        
+        let heap[0] = null;       // No next block (only one free block)
+        let heap[1] = 16383 - 2048 - 1; // Free space size (heap ends at 16383)
+        return;
     }
 
     /** Returns the RAM value at the given address. */
     function int peek(int address) {
+        return ram[address];
     }
 
     /** Sets the RAM value at the given address to the given value. */
     function void poke(int address, int value) {
+        let ram[address] = value;
+        return;
     }
 
-    /** Finds an available RAM block of the given size and returns
-     *  a reference to its base address. */
+    /** Allocates a block of the given size and returns its base address. */
     function int alloc(int size) {
+        var boolean firstBlock, finished, foundBlock;
+        var int currentBlock, currentSize,  bestFit, bestSize, allocatedAddress;
+        let currentBlock = firstFreeBlock;
+        let finished = false;
+        let foundBlock = false;
+        let bestSize = 32767;
+
+        // Search for the best-fit block
+        while (~finished) {
+            let currentSize = heap[currentBlock + 1];
+            if (currentSize >= size + 2) {
+                if (currentSize < bestSize) {
+                    let bestFit = currentBlock;
+                    let bestSize = currentSize;
+                    let foundBlock = true;
+                    if (currentBlock = firstFreeBlock) {
+                        let firstBlock = true;
+                    } else {
+                        let firstBlock = false;
+                    }
+                }
+            }
+
+            if (heap[currentBlock] = null) {
+                let finished = true;
+            } else {
+                let currentBlock = heap[currentBlock];
+            }
+        }
+
+        if (~foundBlock) {
+            do Sys.error(6); // Out of memory
+        }
+
+        if (firstBlock) {
+            let firstFreeBlock = heap[bestFit];
+        }
+
+        // Shrink the free block
+        let currentSize = heap[bestFit + 1];
+        let heap[bestFit + 1] = currentSize - size - 2;
+
+        // Compute allocated block’s address
+        let allocatedAddress = bestFit + currentSize - size;
+
+        let heap[allocatedAddress] = null;        // No next block pointer
+        let heap[allocatedAddress + 1] = size;    // Store its size
+
+        return allocatedAddress + 2;
     }
 
-    /** De-allocates the given object (cast as an array) by making
-     *  it available for future allocations. */
-    function void deAlloc(Array o) {
-    }    
+    /** Deallocates a given object by adding it back to the free list. */
+    function void deAlloc(int object) {
+        let heap[lastFreeBlock] = object - 2; // Link new free block
+        let lastFreeBlock = object - 2;       // Update end of free list
+        return;
+    }
 }

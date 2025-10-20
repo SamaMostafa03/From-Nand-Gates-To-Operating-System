@@ -154,4 +154,21 @@ Key challenges addressed in this project included:
 
 ![compiler](https://github.com/SamaMostafa03/From-Nand-Gates-To-Operating-System/blob/main/Images/compiler%20arch.png?raw=true)
 
-## 9 - Jack Operating System :hourglass_flowing_sand:
+## 9 - Jack Operating System
+The OS layer is the final component that brings the Hack computer to life, providing high-level abstractions for the hardware modules built in previous stages.
+
+Here are 8 classes that make up the `Jack Operating System`, implemented entirely in the Jack language that I built earlier:
+- `Memory`→ Provides access to RAM and manages memory allocation for objects.
+- `Array` → Provides a representation for arrays and memory indexing.
+- `Math` → Implements mathematical operations such as multiplication, division, and square root.
+- `String` → Supports string creation, manipulation, and conversion.
+- `Keyboard` → Handles user input from the keyboard.
+- `Output` → Enables writing text to the screen.
+- `Sys` → Implements system-level services, including program initialization and termination.
+
+Challenges for this OS project include:
+- Running-time analysis and optimization.
+- Resource allocation and deallocation.
+- Heap management and garbage control.
+- Input handling and textual outputs.
+- String processing and overall OS integration.
